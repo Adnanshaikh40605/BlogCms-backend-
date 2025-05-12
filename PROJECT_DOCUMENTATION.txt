@@ -1,0 +1,135 @@
+# BLOG CMS PROJECT DOCUMENTATION
+
+## Project Overview
+This is a full-stack blog content management system (CMS) built with React for the frontend and Django for the backend. The system allows for creating, editing, and managing blog posts, as well as handling comments and user interactions.
+
+## Project Structure
+
+### Frontend (React)
+The frontend is organized in a modular structure:
+
+```
+frontend/
+  ├── public/           # Static files
+  ├── src/
+  │   ├── api/          # API service functions
+  │   ├── assets/       # Images, fonts, and other static resources
+  │   ├── components/   # Reusable UI components
+  │   ├── context/      # React context providers
+  │   ├── hooks/        # Custom React hooks
+  │   ├── pages/        # Page components (routes)
+  │   └── utils/        # Utility functions
+```
+
+### Backend (Django)
+The backend follows Django's standard structure:
+
+```
+backend/
+  ├── blog/             # Main Django app
+  │   ├── migrations/   # Database migrations
+  │   ├── models.py     # Data models
+  │   ├── serializers.py # REST API serializers
+  │   ├── urls.py       # URL configurations
+  │   └── views.py      # API views
+```
+
+## API Endpoints
+
+### Blog Posts API
+
+- `GET /api/posts/` - List all blog posts with pagination
+- `POST /api/posts/` - Create a new blog post
+- `GET /api/posts/:id/` - Get a single blog post by ID
+- `PATCH /api/posts/:id/` - Update a blog post
+- `DELETE /api/posts/:id/` - Delete a blog post
+- `POST /api/posts/:id/upload_images/` - Upload additional images to a post
+- `POST /api/posts/preview/` - Preview a post before publishing
+- `POST /api/posts/check-links/` - Check for broken links in post content
+- `POST /api/posts/validate-slug/` - Generate or validate a slug
+
+### Comments API
+
+- `GET /api/comments/` - List comments with filtering by post ID and approval status
+- `POST /api/comments/` - Create a new comment (requires post ID and content)
+- `GET /api/comments/pending-count/` - Get count of pending comments
+- `POST /api/comments/bulk-approve/` - Approve multiple comments at once
+- `POST /api/comments/bulk-reject/` - Reject multiple comments at once
+- `POST /api/comments/:id/approve/` - Approve a specific comment
+- `POST /api/comments/:id/reject/` - Reject a specific comment
+- `GET /api/comments/all/` - Get all comments for a post (both approved and pending)
+
+## Key Components
+
+### Frontend Components
+
+1. **BlogPostCard.jsx** - Displays a card preview of a blog post with image, title, excerpt, and metadata.
+
+2. **BlogPostPage.jsx** - Renders an individual blog post with full content, featured image, comments section, and sharing options.
+
+3. **BlogListPage.jsx** - Displays a list of blog posts with search functionality and pagination.
+
+4. **PostDetailPage.jsx** - Admin view for a single post with edit, delete, and publish functionality.
+
+5. **CommentForm.jsx** - Form for users to submit comments on blog posts. Only requires content and post ID.
+
+6. **Comment.jsx** - Displays a single comment with content, timestamp, and approval status.
+
+### Context Providers
+
+1. **BlogContext** - Manages blog posts state and operations (fetch, create, update, delete).
+
+2. **CommentContext** - Manages comments state and operations (fetch, create, approve, reject).
+
+### API Services
+
+1. **blogPostService** - Handles all API calls related to blog posts with error handling and caching.
+
+2. **commentService** - Handles all API calls related to comments with error handling.
+
+## Error Handling
+
+The application includes comprehensive error handling:
+
+- API request timeouts (10 seconds)
+- Fallback UI for failed API requests
+- Form validation before submission
+- User-friendly error messages
+- Placeholder images for failed image loads
+
+## Image Handling
+
+The system supports:
+
+- Featured images for posts
+- Additional image galleries for posts
+- Fallback placeholder images
+- Image preview in admin interface
+- Responsive image rendering
+
+## Authentication
+
+The Django backend handles authentication for admin operations.
+
+## Deployment
+
+The project is structured to support deployment with:
+
+- Static file handling for production builds
+- API proxy configuration for development
+- Environment-specific settings
+
+## Data Models
+
+### Comment Model
+The Comment model has been simplified to only require:
+- Association with a blog post
+- Comment content
+- Approval status
+- Timestamp
+
+This streamlined approach focuses on the comment content itself and eliminates unnecessary user identification fields.
+
+---
+
+This documentation provides a high-level overview of the project structure and functionality. For more detailed information, please refer to the code comments and individual component documentation. 
