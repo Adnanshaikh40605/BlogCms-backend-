@@ -1,4 +1,4 @@
-FROM python:3.9
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -9,9 +9,9 @@ ENV PYTHONUNBUFFERED=1
 # Copy requirements first for better caching
 COPY requirements.txt /app/
 
-# Install dependencies explicitly with system Python
-RUN /usr/local/bin/python -m pip install --upgrade pip && \
-    /usr/local/bin/python -m pip install -r requirements.txt
+# Install dependencies
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
 
 # Copy project
 COPY . /app/
