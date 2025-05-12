@@ -15,6 +15,27 @@ from .serializers import (
 )
 
 class BlogPostViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing blog posts.
+    
+    list:
+    Return a list of all blog posts.
+    
+    retrieve:
+    Return a specific blog post by ID.
+    
+    create:
+    Create a new blog post.
+    
+    update:
+    Update an existing blog post.
+    
+    partial_update:
+    Partially update an existing blog post.
+    
+    destroy:
+    Delete a blog post.
+    """
     queryset = BlogPost.objects.all()
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     
@@ -71,11 +92,35 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         return Response(created_images, status=status.HTTP_201_CREATED)
 
 class BlogImageViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing blog images.
+    """
     queryset = BlogImage.objects.all()
     serializer_class = BlogImageSerializer
     parser_classes = [MultiPartParser, FormParser]
 
 class CommentViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing blog comments.
+    
+    list:
+    Return a list of all comments.
+    
+    retrieve:
+    Return a specific comment by ID.
+    
+    create:
+    Create a new comment.
+    
+    update:
+    Update an existing comment.
+    
+    partial_update:
+    Partially update an existing comment.
+    
+    destroy:
+    Delete a comment.
+    """
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     
