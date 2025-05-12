@@ -1,4 +1,4 @@
-Django==5.0.0
+Django==4.2.10
 djangorestframework==3.14.0
 django-cors-headers==4.3.0
 django-ckeditor==6.7.0
