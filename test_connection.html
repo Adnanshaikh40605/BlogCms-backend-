@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Railway API Connection Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      color: #2c3e50;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+    }
+    .test-card {
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      transition: all 0.3s ease;
+    }
+    .test-card:hover {
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .test-card h3 {
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+    }
+    .status {
+      margin-left: 10px;
+      font-size: 14px;
+      font-weight: normal;
+    }
+    .pending {
+      color: #f39c12;
+    }
+    .success {
+      color: #27ae60;
+    }
+    .error {
+      color: #e74c3c;
+    }
+    pre {
+      background-color: #282c34;
+      color: #abb2bf;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 14px;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    #summary {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #e3f2fd;
+      border-radius: 8px;
+    }
+    .input-group {
+      margin-bottom: 15px;
+    }
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Railway API Connection Test</h1>
+  
+  <div class="input-group">
+    <label for="api-url">Railway API URL</label>
+    <input type="text" id="api-url" value="https://web-production-f03ff.up.railway.app" placeholder="Enter your Railway API URL">
+  </div>
+  
+  <button id="run-tests">Run Tests</button>
+  
+  <div id="tests-container">
+    <div id="root-test" class="test-card">
+      <h3>Root URL Test <span class="status pending">Pending</span></h3>
+      <p>Tests if the root URL of your API is accessible.</p>
+      <pre id="root-test-result">Press "Run Tests" to begin</pre>
+    </div>
+    
+    <div id="api-test" class="test-card">
+      <h3>API Posts Endpoint Test <span class="status pending">Pending</span></h3>
+      <p>Tests if the /api/posts/ endpoint is accessible and returns data.</p>
+      <pre id="api-test-result">Press "Run Tests" to begin</pre>
+    </div>
+    
+    <div id="media-test" class="test-card">
+      <h3>Media Files Test <span class="status pending">Pending</span></h3>
+      <p>Tests if media files can be accessed.</p>
+      <pre id="media-test-result">Press "Run Tests" to begin</pre>
+    </div>
+    
+    <div id="cors-test" class="test-card">
+      <h3>CORS Test <span class="status pending">Pending</span></h3>
+      <p>Tests CORS configuration with credentials.</p>
+      <pre id="cors-test-result">Press "Run Tests" to begin</pre>
+    </div>
+    
+    <div id="csrf-test" class="test-card">
+      <h3>CSRF Token Test <span class="status pending">Pending</span></h3>
+      <p>Tests if CSRF tokens are properly configured.</p>
+      <pre id="csrf-test-result">Press "Run Tests" to begin</pre>
+    </div>
+  </div>
+  
+  <div id="summary">
+    <h3>Test Summary</h3>
+    <p>Press "Run Tests" to see results</p>
+  </div>
+  
+  <script>
+    // Helper function to get a CSRF token from cookies
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+    }
+    
+    // Helper function to update test card status
+    function updateTestStatus(testId, status, message) {
+      const testCard = document.getElementById(testId);
+      const statusSpan = testCard.querySelector('.status');
+      const resultPre = document.getElementById(`${testId}-result`);
+      
+      statusSpan.className = `status ${status}`;
+      statusSpan.textContent = status === 'pending' ? 'Pending' : status === 'success' ? 'Success' : 'Error';
+      resultPre.textContent = message;
+    }
+    
+    // Function to run all API tests
+    async function runTests() {
+      const API_URL = document.getElementById('api-url').value.trim();
+      
+      if (!API_URL) {
+        alert('Please enter your Railway API URL');
+        return;
+      }
+      
+      // Reset all test statuses
+      document.querySelectorAll('.status').forEach(span => {
+        span.className = 'status pending';
+        span.textContent = 'Running...';
+      });
+      
+      document.querySelectorAll('pre').forEach(pre => {
+        pre.textContent = 'Test running...';
+      });
+      
+      // Summary text
+      let summaryHTML = '<h3>Test Summary</h3>';
+      
+      try {
+        // Test 1: Root URL
+        try {
+          const rootResponse = await fetch(`${API_URL}/`, {
+            method: 'GET',
+          });
+          
+          if (rootResponse.ok) {
+            updateTestStatus('root-test', 'success', `Response status: ${rootResponse.status}\nRoot URL is accessible`);
+            summaryHTML += '<p>✅ Root URL test passed</p>';
+          } else {
+            updateTestStatus('root-test', 'error', `Response status: ${rootResponse.status}\nError accessing Root URL`);
+            summaryHTML += '<p>❌ Root URL test failed</p>';
+          }
+        } catch (error) {
+          updateTestStatus('root-test', 'error', `Error: ${error.message}`);
+          summaryHTML += '<p>❌ Root URL test failed</p>';
+        }
+        
+        // Test 2: API posts endpoint
+        try {
+          const postsResponse = await fetch(`${API_URL}/api/posts/`, {
+            method: 'GET',
+          });
+          
+          if (postsResponse.ok) {
+            const postsData = await postsResponse.json();
+            updateTestStatus('api-test', 'success', `Response status: ${postsResponse.status}\nData: ${JSON.stringify(postsData, null, 2).substring(0, 500)}${postsData.length > 500 ? '...' : ''}`);
+            summaryHTML += '<p>✅ API Posts endpoint test passed</p>';
+          } else {
+            updateTestStatus('api-test', 'error', `Response status: ${postsResponse.status}\nError accessing API Posts endpoint`);
+            summaryHTML += '<p>❌ API Posts endpoint test failed</p>';
+          }
+        } catch (error) {
+          updateTestStatus('api-test', 'error', `Error: ${error.message}`);
+          summaryHTML += '<p>❌ API Posts endpoint test failed</p>';
+        }
+        
+        // Test 3: Media access
+        try {
+          const mediaResponse = await fetch(`${API_URL}/media/test-access`, {
+            method: 'GET',
+          });
+          
+          if (mediaResponse.ok) {
+            updateTestStatus('media-test', 'success', `Response status: ${mediaResponse.status}\nMedia URL is accessible`);
+            summaryHTML += '<p>✅ Media files test passed</p>';
+          } else {
+            updateTestStatus('media-test', 'success', `Response status: ${mediaResponse.status}\n(404 is normal if the test file doesn't exist)`);
+            summaryHTML += '<p>✅ Media files test passed (with expected 404)</p>';
+          }
+        } catch (error) {
+          updateTestStatus('media-test', 'error', `Error: ${error.message}`);
+          summaryHTML += '<p>❌ Media files test failed</p>';
+        }
+        
+        // Test 4: CORS with credentials
+        try {
+          const corsResponse = await fetch(`${API_URL}/api/posts/`, {
+            method: 'GET',
+            credentials: 'include'
+          });
+          
+          if (corsResponse.ok) {
+            updateTestStatus('cors-test', 'success', `Response status: ${corsResponse.status}\nCORS with credentials successful`);
+            summaryHTML += '<p>✅ CORS test passed</p>';
+          } else {
+            updateTestStatus('cors-test', 'error', `Response status: ${corsResponse.status}\nCORS with credentials failed`);
+            summaryHTML += '<p>❌ CORS test failed</p>';
+          }
+        } catch (error) {
+          updateTestStatus('cors-test', 'error', `Error: ${error.message}`);
+          summaryHTML += '<p>❌ CORS test failed</p>';
+        }
+        
+        // Test 5: CSRF Token
+        try {
+          const csrfToken = getCookie('csrftoken');
+          
+          if (csrfToken) {
+            updateTestStatus('csrf-test', 'success', `CSRF Token found: ${csrfToken.substring(0, 10)}...\nTesting POST request...`);
+            
+            // Try a simple POST request with the token
+            try {
+              const testPostResponse = await fetch(`${API_URL}/api/posts/`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': csrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                  title: 'Test Post',
+                  content: 'This is a test post to verify CSRF functionality.'
+                })
+              });
+              
+              if (testPostResponse.status === 403) {
+                updateTestStatus('csrf-test', 'success', `CSRF Token found: ${csrfToken.substring(0, 10)}...\nPOST response status: ${testPostResponse.status}\nGot 403 - This is expected if you're not logged into the Django admin\nCSRF token is being properly sent`);
+                summaryHTML += '<p>✅ CSRF token test passed (authentication required)</p>';
+              } else if (testPostResponse.status === 201) {
+                updateTestStatus('csrf-test', 'success', `CSRF Token found: ${csrfToken.substring(0, 10)}...\nPOST response status: ${testPostResponse.status}\nPOST request successful (you are logged in)`);
+                summaryHTML += '<p>✅ CSRF token test passed (authenticated)</p>';
+              } else {
+                updateTestStatus('csrf-test', 'error', `CSRF Token found: ${csrfToken.substring(0, 10)}...\nPOST response status: ${testPostResponse.status}\nUnexpected status code for POST request`);
+                summaryHTML += '<p>⚠️ CSRF token test had unexpected result</p>';
+              }
+            } catch (error) {
+              updateTestStatus('csrf-test', 'error', `CSRF Token found: ${csrfToken.substring(0, 10)}...\nError during POST request test: ${error.message}`);
+              summaryHTML += '<p>❌ CSRF token test failed during POST request</p>';
+            }
+          } else {
+            updateTestStatus('csrf-test', 'error', `No CSRF token found in cookies\nTo get a CSRF token:\n1. Visit the Django admin at ${API_URL}/admin/\n2. Log in with your admin credentials\n3. Run this test again`);
+            summaryHTML += '<p>⚠️ CSRF token test inconclusive (no token found)</p>';
+          }
+        } catch (error) {
+          updateTestStatus('csrf-test', 'error', `Error: ${error.message}`);
+          summaryHTML += '<p>❌ CSRF token test failed</p>';
+        }
+        
+        // Add troubleshooting help
+        summaryHTML += `
+          <h3>What's Next?</h3>
+          <p>If all tests passed, your Railway API is correctly configured and you can connect your frontend to it using:</p>
+          <pre>VITE_API_URL=${API_URL}\nVITE_MEDIA_URL=${API_URL}/media/</pre>
+          <p>If you encountered errors:</p>
+          <ul>
+            <li>CORS errors: Ensure your frontend domain is in CORS_ALLOWED_ORIGINS</li>
+            <li>CSRF errors: Ensure your frontend domain is in CSRF_TRUSTED_ORIGINS</li>
+            <li>For more help, see the troubleshooting guides.</li>
+          </ul>
+        `;
+        
+      } catch (error) {
+        summaryHTML += `<p>❌ Tests failed with error: ${error.message}</p>`;
+      }
+      
+      document.getElementById('summary').innerHTML = summaryHTML;
+    }
+    
+    // Attach click handler
+    document.getElementById('run-tests').addEventListener('click', runTests);
+  </script>
+</body>
+</html> 

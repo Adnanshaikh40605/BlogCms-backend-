@@ -76,10 +76,14 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:5173",  # Vite default port
     "http://127.0.0.1:5173",
+    "https://your-frontend-domain.vercel.app",  # Add your frontend deployment URL here
 ]
 
 # For development, you can also use:
-CORS_ALLOW_ALL_ORIGINS = DEBUG  # True in development, False in production
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', DEBUG)  # True in development, False in production
+
+# Enable credentials in CORS requests (important for CSRF)
+CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -89,6 +93,17 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+
+# Try to get frontend URL from environment
+FRONTEND_URL = os.environ.get('FRONTEND_URL', '')
+if FRONTEND_URL and FRONTEND_URL not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
+    # Also add without trailing slash if present
+    if FRONTEND_URL.endswith('/'):
+        CORS_ALLOWED_ORIGINS.append(FRONTEND_URL[:-1])
+    # Also add with trailing slash if not present
+    else:
+        CORS_ALLOWED_ORIGINS.append(FRONTEND_URL + '/')
 
 ROOT_URLCONF = 'backend.urls'
 
@@ -279,8 +294,21 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    # Add Railway app domain to CSRF trusted origins
-    CSRF_TRUSTED_ORIGINS = ['https://web-production-f03ff.up.railway.app']
+    # Add Railway app domain and frontend domain to CSRF trusted origins
+    CSRF_TRUSTED_ORIGINS = [
+        'https://web-production-f03ff.up.railway.app',
+    ]
+    
+    # Add frontend URL to CSRF trusted origins if available
+    if FRONTEND_URL:
+        frontend_domain = FRONTEND_URL
+        if frontend_domain.startswith('http://'):
+            frontend_domain = 'http://' + frontend_domain.split('http://')[1]
+        elif frontend_domain.startswith('https://'):
+            frontend_domain = 'https://' + frontend_domain.split('https://')[1]
+        
+        if frontend_domain not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(frontend_domain)
 
 # Jazzmin Admin Theme Settings
 JAZZMIN_SETTINGS = {
