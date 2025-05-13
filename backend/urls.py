@@ -18,89 +18,72 @@ from django.contrib import admin
 from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.static import serve
+import sys
+import traceback
+
+# Diagnostic view to help troubleshoot issues
+def debug_info(request):
+    try:
+        # Get system info
+        debug_data = {
+            "python_version": sys.version,
+            "settings_debug": settings.DEBUG,
+            "allowed_hosts": settings.ALLOWED_HOSTS,
+            "database": settings.DATABASES['default']['ENGINE'],
+            "request_meta": {k: str(v) for k, v in request.META.items() if k.startswith('HTTP_')},
+            "request_path": request.path,
+            "request_method": request.method,
+            "cors_settings": {
+                "allow_all_origins": getattr(settings, 'CORS_ALLOW_ALL_ORIGINS', False),
+                "allowed_origins": getattr(settings, 'CORS_ALLOWED_ORIGINS', []),
+                "allow_credentials": getattr(settings, 'CORS_ALLOW_CREDENTIALS', False),
+            }
+        }
+        return JsonResponse(debug_data)
+    except Exception as e:
+        error_info = {
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+        return JsonResponse(error_info, status=500)
 
 # A simple view for the root URL
 def welcome(request):
     try:
-        html = """
+        # Build a super-simple response for troubleshooting
+        basic_html = """
         <!DOCTYPE html>
         <html>
         <head>
             <title>Blog CMS API</title>
             <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    line-height: 1.6;
-                    max-width: 800px;
-                    margin: 0 auto;
-                    padding: 20px;
-                }
-                h1 {
-                    color: #2c3e50;
-                }
-                .endpoint {
-                    background-color: #f8f9fa;
-                    padding: 10px;
-                    border-radius: 5px;
-                    margin-bottom: 10px;
-                }
-                a {
-                    color: #3498db;
-                    text-decoration: none;
-                }
-                a:hover {
-                    text-decoration: underline;
-                }
+                body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+                h1 { color: #2c3e50; }
             </style>
         </head>
         <body>
             <h1>Blog CMS API</h1>
-            <p>Welcome to the Blog CMS API. This is the backend service for the Blog Content Management System.</p>
-            
-            <h2>Available Endpoints:</h2>
-            <div class="endpoint">
-                <strong>Admin:</strong> <a href="/admin/">/admin/</a> - Django Admin Interface
-            </div>
-            <div class="endpoint">
-                <strong>API:</strong> <a href="/api/">/api/</a> - API Endpoints
-            </div>
-            <div class="endpoint">
-                <strong>CKEditor 5:</strong> <a href="/ckeditor5/upload/">/ckeditor5/upload/</a> - CKEditor 5 Uploads
-            </div>
-            
-            <p>For more details about the API endpoints, please refer to the documentation.</p>
+            <p>Welcome to the Blog CMS API. This is a minimal page for troubleshooting.</p>
+            <p>Available Endpoints:</p>
+            <ul>
+                <li><a href="/admin/">/admin/</a> - Django Admin</li>
+                <li><a href="/api/">/api/</a> - API</li>
+                <li><a href="/debug-info/">/debug-info/</a> - Diagnostic Info</li>
+            </ul>
         </body>
         </html>
         """
-        return HttpResponse(html)
+        return HttpResponse(basic_html, content_type='text/html')
     except Exception as e:
-        # Return error information
-        error_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Error - Blog CMS API</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }}
-                h1 {{ color: #e74c3c; }}
-                .error {{ background-color: #f8d7da; padding: 15px; border-radius: 5px; color: #721c24; }}
-            </style>
-        </head>
-        <body>
-            <h1>Error Encountered</h1>
-            <div class="error">
-                <p><strong>Error details:</strong> {str(e)}</p>
-            </div>
-            <p>Please contact the administrator with this information.</p>
-        </body>
-        </html>
-        """
-        return HttpResponse(error_html, status=500)
+        # Super simple error response
+        error_text = f"Error: {str(e)}"
+        return HttpResponse(error_text, content_type='text/plain', status=500)
 
 urlpatterns = [
     path('', welcome, name='welcome'),
+    path('debug-info/', debug_info, name='debug_info'),
     path('admin/', admin.site.urls),
     path('api/', include('blog.urls')),
     path("ckeditor5/", include('django_ckeditor_5.urls')),

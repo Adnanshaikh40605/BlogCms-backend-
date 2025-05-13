@@ -130,6 +130,12 @@
       <p>Tests if CSRF tokens are properly configured.</p>
       <pre id="csrf-test-result">Press "Run Tests" to begin</pre>
     </div>
+    
+    <div id="debug-test" class="test-card">
+      <h3>Railway Debug Info <span class="status pending">Pending</span></h3>
+      <p>Tests the debug endpoint to get detailed diagnostic information from your Railway deployment.</p>
+      <pre id="debug-test-result">Press "Run Tests" to begin</pre>
+    </div>
   </div>
   
   <div id="summary">
@@ -297,6 +303,25 @@
         } catch (error) {
           updateTestStatus('csrf-test', 'error', `Error: ${error.message}`);
           summaryHTML += '<p>❌ CSRF token test failed</p>';
+        }
+        
+        // Test for Railway-specific debug info
+        try {
+          const debugResponse = await fetch(`${API_URL}/debug-info/`, {
+            method: 'GET',
+          });
+          
+          if (debugResponse.ok) {
+            const debugData = await debugResponse.json();
+            updateTestStatus('debug-test', 'success', `Debug info retrieved successfully!\n\nSettings Debug Mode: ${debugData.settings_debug}\nAllowed Hosts: ${debugData.allowed_hosts.join(', ')}\nCORS Allow All: ${debugData.cors_settings.allow_all_origins}\nCORS Allow Credentials: ${debugData.cors_settings.allow_credentials}\n\nFull Data: ${JSON.stringify(debugData, null, 2)}`);
+            summaryHTML += '<p>✅ Debug info test passed - Check this data for Railway configuration issues</p>';
+          } else {
+            updateTestStatus('debug-test', 'error', `Response status: ${debugResponse.status}\nError accessing debug info endpoint`);
+            summaryHTML += '<p>❌ Debug info test failed</p>';
+          }
+        } catch (error) {
+          updateTestStatus('debug-test', 'error', `Error: ${error.message}`);
+          summaryHTML += '<p>❌ Debug info test failed</p>';
         }
         
         // Add troubleshooting help
