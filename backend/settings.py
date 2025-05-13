@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # "corsheaders",
     
     # Third-party apps
     'rest_framework',
@@ -68,15 +69,18 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React dev
+    "https://web-production-f03ff.up.railway.app",  # backend self-call  # if you deploy frontend later
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:5173",  # Vite default port
     "http://127.0.0.1:5173",
-    "https://your-frontend-domain.vercel.app",  # Add your frontend deployment URL here
+    "https://blog-cms-frontend-ten.vercel.app/",  # Add your frontend deployment URL here
 ]
 
 # For development, you can also use:
