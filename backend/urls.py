@@ -15,7 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
@@ -65,7 +65,7 @@ def welcome(request):
             <strong>API:</strong> <a href="/api/">/api/</a> - API Endpoints
         </div>
         <div class="endpoint">
-            <strong>CKEditor:</strong> <a href="/ckeditor/">/ckeditor/</a> - CKEditor Uploads
+            <strong>CKEditor 5:</strong> <a href="/ckeditor5/upload/">/ckeditor5/upload/</a> - CKEditor 5 Uploads
         </div>
         
         <p>For more details about the API endpoints, please refer to the documentation.</p>
@@ -78,9 +78,15 @@ urlpatterns = [
     path('', welcome, name='welcome'),
     path('admin/', admin.site.urls),
     path('api/', include('blog.urls')),
-    path('ckeditor/', include('ckeditor_uploader.urls')),
+    path("ckeditor5/", include('django_ckeditor_5.urls')),
 ]
 
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Add this to serve CKEditor 5 media files in development
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', 'django.views.static.serve', {
+            'document_root': settings.MEDIA_ROOT,
+        }),
+    ]
