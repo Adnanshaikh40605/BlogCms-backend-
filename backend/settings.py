@@ -75,15 +75,18 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React dev
     "https://web-production-f03ff.up.railway.app",  # backend self-call
-    # other URLs...
+    "http://web-production-f03ff.up.railway.app",   # backend self-call non-https
     "https://blog-cms-frontend-ten.vercel.app",  # Your frontend deployment
 ]
 
-# For development, you can also use:
+# For development or when you're experiencing CSRF issues, you can temporarily use:
 CORS_ALLOW_ALL_ORIGINS = True  # Enable all CORS for debugging
 
 # Enable credentials in CORS requests (important for CSRF)
 CORS_ALLOW_CREDENTIALS = True
+
+# More CORS settings
+CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -92,6 +95,19 @@ CORS_ALLOW_METHODS = [
     'PATCH',
     'POST',
     'PUT',
+]
+
+# Allow these headers in CORS requests
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
 # Try to get frontend URL from environment
@@ -333,6 +349,8 @@ if not DEBUG:
     # Add Railway app domain and frontend domain to CSRF trusted origins
     CSRF_TRUSTED_ORIGINS = [
         'https://web-production-f03ff.up.railway.app',
+        'http://web-production-f03ff.up.railway.app',
+        'https://blog-cms-frontend-ten.vercel.app',
     ]
     
     # Add frontend URL to CSRF trusted origins if available
@@ -345,6 +363,15 @@ if not DEBUG:
         
         if frontend_domain not in CSRF_TRUSTED_ORIGINS:
             CSRF_TRUSTED_ORIGINS.append(frontend_domain)
+else:
+    # Even in debug mode, we need CSRF trusted origins for the admin interface
+    CSRF_TRUSTED_ORIGINS = [
+        'https://web-production-f03ff.up.railway.app',
+        'http://web-production-f03ff.up.railway.app',
+        'https://blog-cms-frontend-ten.vercel.app',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    ]
 
 # Jazzmin Admin Theme Settings
 JAZZMIN_SETTINGS = {
@@ -460,3 +487,12 @@ JAZZMIN_UI_TWEAKS = {
         "success": "btn-success"
     }
 }
+
+# Cookie settings for CSRF protection
+CSRF_COOKIE_SAMESITE = 'Lax'  # Use 'Lax' to allow cross-domain requests with CSRF token
+SESSION_COOKIE_SAMESITE = 'Lax'  # Same for session cookies
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access the CSRF cookie
+SESSION_COOKIE_HTTPONLY = True  # Don't allow JavaScript to access the session cookie
+
+# Ensure these cookies are accessible from the frontend domain
+CSRF_COOKIE_DOMAIN = None  # Let the browser determine based on the request
