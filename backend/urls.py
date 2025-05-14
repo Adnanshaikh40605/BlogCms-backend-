@@ -53,10 +53,14 @@ def debug_info(request):
 # New endpoint to test database connection
 def test_db_connection(request):
     try:
-        # Try to make a simple database query
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            row = cursor.fetchone()
+        # Import the test function from settings
+        from backend.settings import test_database_connection
+        
+        # Test basic database connectivity
+        connection_success = test_database_connection()
+        
+        if not connection_success:
+            raise Exception("Database connection test failed")
         
         # Test more complex queries to diagnose issues
         try:
@@ -91,7 +95,7 @@ def test_db_connection(request):
             "message": "Database connection successful",
             "connection_info": db_info,
             "sample_tables": tables,
-            "query_result": row[0] if row else None
+            "query_result": tables[0] if tables else None
         })
     except Exception as e:
         error_info = {

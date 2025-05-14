@@ -148,6 +148,24 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Always use PostgreSQL (SQLite is no longer used)
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/blog_cms')
 
+# Check if URL is malformed (specifically look for double @ which indicates improper parsing of password)
+if '@' in DATABASE_URL.split('://')[1].split(':', 1)[1].split('@', 1)[0]:
+    # Fix the malformed URL by properly encoding the password
+    parts = DATABASE_URL.split('://')
+    if len(parts) == 2:
+        scheme = parts[0]
+        rest = parts[1]
+        if '@' in rest:
+            userpass, hostdbinfo = rest.split('@', 1)
+            if ':' in userpass:
+                user, password = userpass.split(':', 1)
+                # If password contains '@', encode it
+                if '@' in password:
+                    import urllib.parse
+                    password = urllib.parse.quote(password)
+                    DATABASE_URL = f"{scheme}://{user}:{password}@{hostdbinfo}"
+                    print(f"Fixed malformed DATABASE_URL (contained @ in password)")
+
 # Create a masked version of DATABASE_URL for logging
 def mask_password(url):
     if not url:
@@ -190,18 +208,24 @@ print(f"Database name: {DATABASES['default'].get('NAME', 'Not specified')}")
 print(f"Database host: {DATABASES['default'].get('HOST', 'Not specified')}")
 print(f"Database port: {DATABASES['default'].get('PORT', 'Not specified')}")
 
-# Test database connection
-import sys
-try:
-    from django.db import connection
-    cursor = connection.cursor()
-    cursor.execute("SELECT 1")
-    print("Database connection test successful!")
-except Exception as e:
-    print(f"ERROR connecting to database: {str(e)}", file=sys.stderr)
-    print(f"Database connection test failed!", file=sys.stderr)
-    # Keep the application running even if initial connection fails
-    # This allows for troubleshooting through the diagnostic endpoints
+# Test database connection function (to be called later, not during initialization)
+def test_database_connection():
+    import sys
+    try:
+        from django.db import connection
+        cursor = connection.cursor()
+        cursor.execute("SELECT 1")
+        print("Database connection test successful!")
+        return True
+    except Exception as e:
+        print(f"ERROR connecting to database: {str(e)}", file=sys.stderr)
+        print(f"Database connection test failed!", file=sys.stderr)
+        # Keep the application running even if initial connection fails
+        # This allows for troubleshooting through the diagnostic endpoints
+        return False
+
+# Don't run this during app initialization, as it leads to the warning
+# We'll call this function from a management command or view instead
 
 
 # Password validation
