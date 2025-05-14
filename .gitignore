@@ -45,4 +45,32 @@ ENV/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db 
+Thumbs.db
+
+# Frontend directory - exclude completely
+frontend/
+
+# Database files
+*.sqlite3
+*.db
+
+# Media files
+media/
+
+# Static files collection
+staticfiles/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+
+# Temp files
+*.tmp
+
+# System files
+.directory
+.Trash-*
+$RECYCLE.BIN/
+*.bak 

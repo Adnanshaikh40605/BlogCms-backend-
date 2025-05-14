@@ -12,7 +12,7 @@ Thank you for considering contributing to the Blog CMS project! This document ou
 6. [Pull Request Process](#pull-request-process)
 7. [Issue Reporting](#issue-reporting)
 
-## Code of Conduct
+## Code of Conduct ---
 
 We expect all contributors to adhere to our code of conduct, which can be summarized as:
 
