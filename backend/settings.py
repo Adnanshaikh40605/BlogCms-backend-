@@ -69,23 +69,18 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    "corsheaders.middleware.CorsMiddleware",
 ]
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React dev
     "https://web-production-f03ff.up.railway.app",  # backend self-call
-  # if you deploy frontend later
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",  # Vite default port
-    "http://127.0.0.1:5173",
-    "https://blog-cms-frontend-ten.vercel.app",  # Add your frontend deployment URL here
+    # other URLs...
+    "https://blog-cms-frontend-ten.vercel.app",  # Your frontend deployment
 ]
 
 # For development, you can also use:
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', DEBUG)  # True in development, False in production
+CORS_ALLOW_ALL_ORIGINS = True  # Temporarily set to True for debugging
 
 # Enable credentials in CORS requests (important for CSRF)
 CORS_ALLOW_CREDENTIALS = True
