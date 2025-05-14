@@ -22,6 +22,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.static import serve
 import sys
 import traceback
+from django.db import connection
 
 # Diagnostic view to help troubleshoot issues
 def debug_info(request):
@@ -47,6 +48,80 @@ def debug_info(request):
             "error": str(e),
             "traceback": traceback.format_exc()
         }
+        return JsonResponse(error_info, status=500)
+
+# New endpoint to test database connection
+def test_db_connection(request):
+    try:
+        # Try to make a simple database query
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            row = cursor.fetchone()
+        
+        # Test more complex queries to diagnose issues
+        try:
+            # Try to list tables in the database
+            with connection.cursor() as cursor:
+                if settings.DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
+                    cursor.execute("""
+                        SELECT table_name 
+                        FROM information_schema.tables 
+                        WHERE table_schema='public' AND table_type='BASE TABLE'
+                        LIMIT 5
+                    """)
+                    tables = [row[0] for row in cursor.fetchall()]
+                else:
+                    tables = ["Non-PostgreSQL database detected"]
+        except Exception as table_error:
+            tables = [f"Error listing tables: {str(table_error)}"]
+        
+        # Get database connection info (sanitized)
+        db_info = {
+            "engine": settings.DATABASES['default']['ENGINE'],
+            "name": settings.DATABASES['default']['NAME'],
+            "host": settings.DATABASES['default'].get('HOST', 'Not specified'),
+            "port": settings.DATABASES['default'].get('PORT', 'Not specified'),
+            "user": settings.DATABASES['default'].get('USER', 'Not specified'),
+            # Don't include password for security reasons
+            "options": settings.DATABASES['default'].get('OPTIONS', {}),
+        }
+        
+        return JsonResponse({
+            "status": "success",
+            "message": "Database connection successful",
+            "connection_info": db_info,
+            "sample_tables": tables,
+            "query_result": row[0] if row else None
+        })
+    except Exception as e:
+        error_info = {
+            "status": "error",
+            "error_message": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+            "db_settings": {
+                "engine": settings.DATABASES['default']['ENGINE'],
+                "name": settings.DATABASES['default']['NAME'],
+                "host": settings.DATABASES['default'].get('HOST', 'Not specified'),
+                "port": settings.DATABASES['default'].get('PORT', 'Not specified'),
+                "user": settings.DATABASES['default'].get('USER', 'Not specified'),
+                # Don't include password for security reasons
+            }
+        }
+        
+        # Try to get more specific database error information for common issues
+        error_str = str(e).lower()
+        if "timeout" in error_str:
+            error_info["possible_cause"] = "Connection timeout. The database server might be unreachable or blocked by a firewall."
+        elif "authentication" in error_str or "password" in error_str:
+            error_info["possible_cause"] = "Authentication failed. Check your database credentials."
+        elif "does not exist" in error_str:
+            error_info["possible_cause"] = "Database or schema doesn't exist. Check your database name."
+        elif "permission denied" in error_str:
+            error_info["possible_cause"] = "Permission issue. The user doesn't have sufficient privileges."
+        elif "too many connections" in error_str:
+            error_info["possible_cause"] = "The database has reached its connection limit."
+        
         return JsonResponse(error_info, status=500)
 
 # A simple view for the root URL
@@ -84,6 +159,8 @@ def welcome(request):
 urlpatterns = [
     path('', welcome, name='welcome'),
     path('debug-info/', debug_info, name='debug_info'),
+    path('test-db/', test_db_connection, name='test_db_connection'),
+    path('test-db', test_db_connection, name='test_db_connection_no_slash'),  # Add version without trailing slash
     path('admin/', admin.site.urls),
     path('api/', include('blog.urls')),
     path("ckeditor5/", include('django_ckeditor_5.urls')),

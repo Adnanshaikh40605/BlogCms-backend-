@@ -32,9 +32,9 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-p4&t4m)l6oje8l8z9l2@l
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Setting DEBUG to True temporarily to see detailed error messages
-DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
+DEBUG = True
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+ALLOWED_HOSTS = ['*']  # Allow all hosts temporarily for debugging
 
 
 # Application definition
@@ -80,7 +80,7 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # For development, you can also use:
-CORS_ALLOW_ALL_ORIGINS = True  # Temporarily set to True for debugging
+CORS_ALLOW_ALL_ORIGINS = True  # Enable all CORS for debugging
 
 # Enable credentials in CORS requests (important for CSRF)
 CORS_ALLOW_CREDENTIALS = True
@@ -142,6 +142,25 @@ def mask_password(url):
     except Exception:
         return "Invalid database URL format"
 
+print(f"Using DATABASE_URL: {mask_password(DATABASE_URL)}")
+
+# Try to parse the URL to verify its structure
+try:
+    url_parts = re.match(r'postgresql://([^:]+):([^@]+)@([^:/]+)(?::(\d+))?/(.+)', DATABASE_URL)
+    if url_parts:
+        db_user, db_password, db_host, db_port, db_name = url_parts.groups()
+        db_port = db_port or '5432'  # Default port if not specified
+        print(f"Database connection details parsed successfully:")
+        print(f"  Host: {db_host}")
+        print(f"  Port: {db_port}")
+        print(f"  Database: {db_name}")
+        print(f"  User: {db_user}")
+    else:
+        print(f"WARNING: Database URL does not match expected pattern: {mask_password(DATABASE_URL)}")
+except Exception as e:
+    print(f"ERROR parsing database URL: {str(e)}")
+
+# Additional DB config logging
 DATABASES = {
     'default': dj_database_url.config(
         default=DATABASE_URL,
@@ -150,6 +169,23 @@ DATABASES = {
     )
 }
 print(f"Using PostgreSQL database: {mask_password(DATABASE_URL)}")
+print(f"Database engine: {DATABASES['default'].get('ENGINE', 'Not specified')}")
+print(f"Database name: {DATABASES['default'].get('NAME', 'Not specified')}")
+print(f"Database host: {DATABASES['default'].get('HOST', 'Not specified')}")
+print(f"Database port: {DATABASES['default'].get('PORT', 'Not specified')}")
+
+# Test database connection
+import sys
+try:
+    from django.db import connection
+    cursor = connection.cursor()
+    cursor.execute("SELECT 1")
+    print("Database connection test successful!")
+except Exception as e:
+    print(f"ERROR connecting to database: {str(e)}", file=sys.stderr)
+    print(f"Database connection test failed!", file=sys.stderr)
+    # Keep the application running even if initial connection fails
+    # This allows for troubleshooting through the diagnostic endpoints
 
 
 # Password validation
