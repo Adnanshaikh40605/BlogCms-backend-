@@ -179,12 +179,27 @@ class CommentViewSet(viewsets.ModelViewSet):
         if approved is not None:
             if approved.lower() == 'true':
                 queryset = queryset.filter(approved=True)
+                logger.info(f"Filtering for APPROVED comments only for post {post}")
             elif approved.lower() == 'false':
                 queryset = queryset.filter(approved=False)
+                logger.info(f"Filtering for UNAPPROVED comments only for post {post}")
                 
         # Log the query for debugging
         logger.debug(f"Comment queryset filters: post={post}, approved={approved}")
-        logger.debug(f"Comment queryset count: {queryset.count()}")
+        logger.debug(f"Comment queryset SQL: {str(queryset.query)}")
+        count = queryset.count()
+        logger.debug(f"Comment queryset count: {count}")
+        
+        # Additional logging for debugging
+        if count == 0 and approved == 'true':
+            # If we're looking for approved comments but found none, log all comments for this post
+            all_comments = Comment.objects.filter(post=post)
+            approved_count = all_comments.filter(approved=True).count()
+            logger.info(f"Found {approved_count} approved comments out of {all_comments.count()} total for post {post}")
+            
+            # Log the first few comments with their approval status for debugging
+            for comment in all_comments[:5]:
+                logger.info(f"Comment {comment.id}: approved={comment.approved}, content={comment.content[:30]}")
         
         return queryset
     
@@ -243,9 +258,28 @@ class CommentViewSet(viewsets.ModelViewSet):
     def approve(self, request, pk=None):
         """Approve a comment"""
         comment = self.get_object()
+        logger.info(f"Approving comment {comment.id} for post {comment.post.id}")
+        logger.info(f"Comment status before: approved={comment.approved}")
+        
+        # Explicitly set approved to True
         comment.approved = True
         comment.save()
-        return Response({'status': 'comment approved'}, status=status.HTTP_200_OK)
+        
+        # Verify the change was saved
+        comment.refresh_from_db()
+        logger.info(f"Comment status after: approved={comment.approved}")
+        
+        # Get all approved comments for this post for verification
+        approved_count = Comment.objects.filter(post=comment.post, approved=True).count()
+        logger.info(f"Post {comment.post.id} now has {approved_count} approved comments")
+        
+        # Return the updated comment data
+        serializer = CommentSerializer(comment)
+        return Response({
+            'status': 'comment approved',
+            'comment': serializer.data,
+            'approved_count': approved_count
+        }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post', 'patch'])
     def reject(self, request, pk=None):
@@ -305,3 +339,78 @@ class CommentViewSet(viewsets.ModelViewSet):
             'pending': CommentSerializer(pending_comments, many=True).data,
             'total': approved_comments.count() + pending_comments.count()
         }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'])
+    def check_approved(self, request):
+        """Check the status of approved comments for a specific post"""
+        post_id = request.query_params.get('post')
+        if not post_id:
+            return Response(
+                {'error': 'Post ID is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            post = BlogPost.objects.get(pk=post_id)
+        except BlogPost.DoesNotExist:
+            return Response(
+                {'error': f'Post with ID {post_id} does not exist'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get all comments for this post
+        all_comments = Comment.objects.filter(post=post)
+        
+        # Count by approval status
+        total_count = all_comments.count()
+        approved_count = all_comments.filter(approved=True).count()
+        unapproved_count = all_comments.filter(approved=False).count()
+        
+        # Get sample comments
+        approved_samples = all_comments.filter(approved=True)[:5]
+        unapproved_samples = all_comments.filter(approved=False)[:5]
+        
+        # Serialize sample comments
+        approved_samples_data = CommentSerializer(approved_samples, many=True).data
+        unapproved_samples_data = CommentSerializer(unapproved_samples, many=True).data
+        
+        return Response({
+            'post_id': post_id,
+            'post_title': post.title,
+            'counts': {
+                'total': total_count,
+                'approved': approved_count,
+                'unapproved': unapproved_count
+            },
+            'approved_samples': approved_samples_data,
+            'unapproved_samples': unapproved_samples_data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'])
+    def approved_for_post(self, request):
+        """Get only approved comments for a specific post (dedicated endpoint)"""
+        post_id = request.query_params.get('post')
+        if not post_id:
+            return Response(
+                {'error': 'Post ID is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            post = BlogPost.objects.get(pk=post_id)
+        except BlogPost.DoesNotExist:
+            return Response(
+                {'error': f'Post with ID {post_id} does not exist'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Explicitly filter for approved comments only
+        approved_comments = Comment.objects.filter(post=post, approved=True)
+        
+        # Log details for debugging
+        logger.info(f"Getting approved comments for post {post_id}")
+        logger.info(f"Found {approved_comments.count()} approved comments")
+        
+        # Return serialized data
+        serializer = CommentSerializer(approved_comments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

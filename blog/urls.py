@@ -16,6 +16,8 @@ urlpatterns = [
     path('comments/pending-count/', views.CommentViewSet.as_view({'get': 'pending_count'}), name='comment-pending-count'),
     path('comments/all/', views.CommentViewSet.as_view({'get': 'all'}), name='comments-all'),
     path('comments/debug/', views.CommentViewSet.as_view({'get': 'debug'}), name='comments-debug'),
+    path('comments/check-approved/', views.CommentViewSet.as_view({'get': 'check_approved'}), name='comments-check-approved'),
+    path('comments/approved-for-post/', views.CommentViewSet.as_view({'get': 'approved_for_post'}), name='comments-approved-for-post'),
     
     # Also provide underscore versions for better API compatibility
     path('comments/pending_count/', views.CommentViewSet.as_view({'get': 'pending_count'}), name='comment-pending-count-alt'),
