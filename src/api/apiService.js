@@ -15,48 +15,36 @@ const commentAPI = {
   // Get approved comments for a post
   getApproved: async (postId) => {
     try {
-      console.log(`Fetching approved comments for post ${postId} - ${new Date().toISOString()}`);
+      if (!postId) {
+        console.error('No post ID provided to getApproved');
+        return { results: [], count: 0 };
+      }
       
-      // First try with the dedicated endpoint
+      // Ensure postId is a string to avoid [object Object] in URL
+      const safePostId = String(postId);
+      console.log(`Fetching approved comments for post ${safePostId} - ${new Date().toISOString()}`);
+      
+      // Try fallback method first (more reliable)
       try {
-        // Ensure postId is a string
-        const safePostId = String(postId);
-        const dedicatedUrl = `${API_URL}/api/comments/approved-for-post/?post=${safePostId}`;
-        console.log('Trying dedicated endpoint URL:', dedicatedUrl);
-        
-        const response = await fetch(dedicatedUrl);
-        if (!response.ok) {
-          throw new Error(`Server returned ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log('Approved comments response (dedicated endpoint):', data);
-        
-        return {
-          results: Array.isArray(data) ? data : [],
-          count: Array.isArray(data) ? data.length : 0
-        };
-      } catch (dedicatedEndpointError) {
-        console.warn('Dedicated endpoint failed, falling back to query params:', dedicatedEndpointError);
-        
-        // Fall back to using query params if the dedicated endpoint fails
-        // Ensure postId is a string
-        const safePostId = String(postId);
         const fallbackUrl = `${API_URL}/api/comments/?post=${safePostId}&approved=true`;
-        console.log('Trying fallback URL with query params:', fallbackUrl);
+        console.log('Request URL:', fallbackUrl);
         
         const fallbackResponse = await fetch(fallbackUrl);
         if (!fallbackResponse.ok) {
-          throw new Error(`Fallback also failed: ${fallbackResponse.status} ${fallbackResponse.statusText}`);
+          throw new Error(`Failed with status ${fallbackResponse.status}`);
         }
         
         const fallbackData = await fallbackResponse.json();
-        console.log('Approved comments response (fallback):', fallbackData);
+        console.log('Approved comments response (query params):', fallbackData);
         
         return {
           results: Array.isArray(fallbackData) ? fallbackData : [],
           count: Array.isArray(fallbackData) ? fallbackData.length : 0
         };
+      } catch (fallbackError) {
+        console.warn('Standard endpoint failed:', fallbackError);
+        // Return empty results as ultimate fallback
+        return { results: [], count: 0 };
       }
     } catch (error) {
       console.error('Error fetching approved comments:', error);

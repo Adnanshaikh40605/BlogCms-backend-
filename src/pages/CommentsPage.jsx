@@ -89,12 +89,14 @@ const CommentsPage = () => {
           // Fetch pending comments (not approved and not rejected)
           console.log('CommentsPage - Fetching pending comments');
           try {
-            // Use direct fetch with string parameter
-            const response = await fetch(`${API_URL}/api/comments/?approved=false`);
-            if (!response.ok) {
-              throw new Error(`Server returned ${response.status} ${response.statusText}`);
+            // Use the API service instead of direct fetch
+            responseData = await commentAPI.getAll(null); // Get all comments
+            
+            // Filter on the client side for pending comments
+            if (Array.isArray(responseData)) {
+              responseData = responseData.filter(comment => !comment.approved);
             }
-            responseData = await response.json();
+            
             console.log('CommentsPage - Pending comments response:', responseData);
           } catch (fetchError) {
             console.error('Error fetching pending comments:', fetchError);
@@ -106,12 +108,14 @@ const CommentsPage = () => {
           // Get approved comments across all posts
           console.log('CommentsPage - Fetching approved comments');
           try {
-            // Use direct fetch with string parameter
-            const response = await fetch(`${API_URL}/api/comments/?approved=true`);
-            if (!response.ok) {
-              throw new Error(`Server returned ${response.status} ${response.statusText}`);
+            // Use the API service instead of direct fetch
+            responseData = await commentAPI.getAll(null); // Get all comments
+            
+            // Filter on the client side for approved comments
+            if (Array.isArray(responseData)) {
+              responseData = responseData.filter(comment => comment.approved);
             }
-            responseData = await response.json(); 
+            
             console.log('CommentsPage - Approved comments response:', responseData);
           } catch (fetchError) {
             console.error('Error fetching approved comments:', fetchError);
@@ -137,12 +141,8 @@ const CommentsPage = () => {
           // For 'all' filter case
           try {
             console.log('CommentsPage - Fetching all comments');
-            // Get all comments (no filter)
-            const response = await fetch(`${API_URL}/api/comments/`);
-            if (!response.ok) {
-              throw new Error(`Server returned ${response.status} ${response.statusText}`);
-            }
-            responseData = await response.json();
+            // Use the API service instead of direct fetch
+            responseData = await commentAPI.getAll(null);
             console.log('CommentsPage - All comments response:', responseData);
           } catch (fetchError) {
             console.warn('Error fetching all comments:', fetchError);
