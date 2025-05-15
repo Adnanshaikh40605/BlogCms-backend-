@@ -89,7 +89,7 @@ const CommentsPage = () => {
           // Fetch pending comments (not approved and not rejected)
           console.log('CommentsPage - Fetching pending comments');
           try {
-            // Use direct fetch instead of passing an object
+            // Use direct fetch with string parameter
             const response = await fetch(`${API_URL}/api/comments/?approved=false`);
             if (!response.ok) {
               throw new Error(`Server returned ${response.status} ${response.statusText}`);
@@ -106,6 +106,7 @@ const CommentsPage = () => {
           // Get approved comments across all posts
           console.log('CommentsPage - Fetching approved comments');
           try {
+            // Use direct fetch with string parameter
             const response = await fetch(`${API_URL}/api/comments/?approved=true`);
             if (!response.ok) {
               throw new Error(`Server returned ${response.status} ${response.statusText}`);

@@ -4,7 +4,9 @@ const commentAPI = {
   getAll: async (postId = null) => {
     let url = `${API_URL}/api/comments/`;
     if (postId) {
-      url += `?post=${postId}`;
+      // Ensure postId is a string/number value, not an object
+      const safePostId = String(postId);
+      url += `?post=${safePostId}`;
     }
     const response = await fetch(url);
     return response.json();
@@ -17,7 +19,9 @@ const commentAPI = {
       
       // First try with the dedicated endpoint
       try {
-        const dedicatedUrl = `${API_URL}/api/comments/approved-for-post/?post=${postId}`;
+        // Ensure postId is a string
+        const safePostId = String(postId);
+        const dedicatedUrl = `${API_URL}/api/comments/approved-for-post/?post=${safePostId}`;
         console.log('Trying dedicated endpoint URL:', dedicatedUrl);
         
         const response = await fetch(dedicatedUrl);
@@ -36,7 +40,9 @@ const commentAPI = {
         console.warn('Dedicated endpoint failed, falling back to query params:', dedicatedEndpointError);
         
         // Fall back to using query params if the dedicated endpoint fails
-        const fallbackUrl = `${API_URL}/api/comments/?post=${postId}&approved=true`;
+        // Ensure postId is a string
+        const safePostId = String(postId);
+        const fallbackUrl = `${API_URL}/api/comments/?post=${safePostId}&approved=true`;
         console.log('Trying fallback URL with query params:', fallbackUrl);
         
         const fallbackResponse = await fetch(fallbackUrl);
@@ -64,7 +70,9 @@ const commentAPI = {
     try {
       console.log(`Fetching pending comments for post ${postId} - ${new Date().toISOString()}`);
       // Use explicit query parameter for approved=false
-      const url = `${API_URL}/api/comments/?post=${postId}&approved=false`;
+      // Ensure postId is a string
+      const safePostId = String(postId);
+      const url = `${API_URL}/api/comments/?post=${safePostId}&approved=false`;
       console.log('Request URL:', url);
       
       const response = await fetch(url);
