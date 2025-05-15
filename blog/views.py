@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 from django.db.models import Prefetch
+import logging
 
 from .models import BlogPost, BlogImage, Comment
 from .serializers import (
@@ -13,6 +14,9 @@ from .serializers import (
     BlogImageSerializer, 
     CommentSerializer
 )
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 class BlogPostViewSet(viewsets.ModelViewSet):
     """
@@ -71,6 +75,45 @@ class BlogPostViewSet(viewsets.ModelViewSet):
             queryset = queryset.prefetch_related('images')
             
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        """Create a new blog post, handling both JSON and multipart requests"""
+        logger.info(f"Creating blog post with content type: {request.content_type}")
+        
+        # Log request data for debugging
+        logger.debug(f"Request data: {request.data}")
+        
+        # Extract additional images from form data if present
+        additional_images = []
+        additional_image_keys = [key for key in request.data.keys() if key.startswith('additional_images[')]
+        
+        if additional_image_keys:
+            logger.info(f"Found additional image keys: {additional_image_keys}")
+            for key in additional_image_keys:
+                additional_images.append(request.data[key])
+            
+            # Create a mutable copy of the request data
+            data = request.data.copy()
+            
+            # Remove the individual image fields
+            for key in additional_image_keys:
+                del data[key]
+            
+            # Add the collected images as a list
+            if additional_images:
+                data._mutable = True
+                data['additional_images'] = additional_images
+                data._mutable = False
+                
+            # Update the request data
+            request._full_data = data
+        
+        # Continue with normal processing
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     
     @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def upload_images(self, request, pk=None):
@@ -138,6 +181,10 @@ class CommentViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(approved=True)
             elif approved.lower() == 'false':
                 queryset = queryset.filter(approved=False)
+                
+        # Log the query for debugging
+        logger.debug(f"Comment queryset filters: post={post}, approved={approved}")
+        logger.debug(f"Comment queryset count: {queryset.count()}")
         
         return queryset
     
@@ -145,8 +192,53 @@ class CommentViewSet(viewsets.ModelViewSet):
     def pending_count(self, request):
         """Return the count of pending (unapproved) comments"""
         count = Comment.objects.filter(approved=False).count()
+        logger.info(f"Pending comments count: {count}")
         return Response({'count': count}, status=status.HTTP_200_OK)
-    
+        
+    @action(detail=False, methods=['get'])
+    def debug(self, request):
+        """Debug endpoint to check comments data and filter functionality"""
+        # Get counts
+        total_comments = Comment.objects.count()
+        approved_comments = Comment.objects.filter(approved=True).count()
+        pending_comments = Comment.objects.filter(approved=False).count()
+        
+        # Check if filtering works
+        post_filter = request.query_params.get('post')
+        approved_filter = request.query_params.get('approved')
+        
+        filtered_queryset = self.get_queryset()
+        filtered_count = filtered_queryset.count()
+        
+        # Sample data
+        sample_comments = []
+        for comment in filtered_queryset[:5]:  # Get first 5 comments
+            sample_comments.append({
+                'id': comment.id,
+                'post_id': comment.post_id,
+                'content_preview': comment.content[:50] + ('...' if len(comment.content) > 50 else ''),
+                'approved': comment.approved,
+                'created_at': comment.created_at
+            })
+        
+        # Return debug info
+        debug_info = {
+            'counts': {
+                'total': total_comments,
+                'approved': approved_comments,
+                'pending': pending_comments,
+                'filtered': filtered_count,
+            },
+            'filters_applied': {
+                'post': post_filter,
+                'approved': approved_filter,
+            },
+            'request_params': dict(request.query_params),
+            'sample_comments': sample_comments
+        }
+        
+        return Response(debug_info, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['post', 'patch'])
     def approve(self, request, pk=None):
         """Approve a comment"""
@@ -198,26 +290,18 @@ class CommentViewSet(viewsets.ModelViewSet):
     def all(self, request):
         """Return all comments (approved and pending) for a post"""
         post_id = request.query_params.get('post')
-        
         if not post_id:
             return Response(
                 {'error': 'Post ID is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        # Get all comments for the post
-        comments = Comment.objects.filter(post=post_id).order_by('-created_at')
-        
-        # Split them into approved and pending
-        approved = comments.filter(approved=True)
-        pending = comments.filter(approved=False)
-        
-        # Serialize both
-        approved_data = CommentSerializer(approved, many=True).data
-        pending_data = CommentSerializer(pending, many=True).data
+        post = get_object_or_404(BlogPost, pk=post_id)
+        approved_comments = Comment.objects.filter(post=post, approved=True)
+        pending_comments = Comment.objects.filter(post=post, approved=False)
         
         return Response({
-            'approved': approved_data,
-            'pending': pending_data,
-            'total': len(approved_data) + len(pending_data)
+            'approved': CommentSerializer(approved_comments, many=True).data,
+            'pending': CommentSerializer(pending_comments, many=True).data,
+            'total': approved_comments.count() + pending_comments.count()
         }, status=status.HTTP_200_OK)

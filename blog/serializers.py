@@ -46,21 +46,32 @@ class BlogPostSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def create(self, validated_data):
-        additional_images = validated_data.pop('additional_images', [])
+        # Extract additional images if present
+        additional_images = []
+        if 'additional_images' in validated_data:
+            additional_images = validated_data.pop('additional_images', [])
+        
+        # Create the blog post
         blog_post = BlogPost.objects.create(**validated_data)
         
+        # Create image entries for each additional image
         for image_data in additional_images:
             BlogImage.objects.create(post=blog_post, image=image_data)
             
         return blog_post
     
     def update(self, instance, validated_data):
-        additional_images = validated_data.pop('additional_images', [])
+        # Extract additional images if present
+        additional_images = []
+        if 'additional_images' in validated_data:
+            additional_images = validated_data.pop('additional_images', [])
         
+        # Update the blog post fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
         
+        # Create image entries for each additional image
         for image_data in additional_images:
             BlogImage.objects.create(post=instance, image=image_data)
             
