@@ -73,6 +73,7 @@ MIDDLEWARE = [
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
     "http://localhost:3000",  # React dev
     "https://web-production-f03ff.up.railway.app",  # backend self-call
     "http://web-production-f03ff.up.railway.app",   # backend self-call non-https
