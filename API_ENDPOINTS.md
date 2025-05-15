@@ -6,6 +6,16 @@ Base URL: `https://web-production-f03ff.up.railway.app`
 
 The API currently does not require authentication for GET requests. For POST, PUT, PATCH, and DELETE operations, the Django admin session must be active.
 
+## CORS Configuration
+
+The API supports Cross-Origin Resource Sharing (CORS) with the following configurations:
+- Allowed origins: 
+  - `http://localhost:3000` (local development)
+  - `https://web-production-f03ff.up.railway.app` (backend)
+  - `https://blog-cms-frontend-ten.vercel.app` (frontend deployment)
+- Credentials are allowed (important for CSRF)
+- All standard HTTP methods are supported (GET, POST, PUT, PATCH, DELETE, OPTIONS)
+
 ## Blog Posts API
 
 ### Get All Posts
@@ -59,7 +69,14 @@ Retrieves a specific blog post by ID.
       "featured_image": "uploads/featured_images/sample.jpg",
       "created_at": "2023-05-15T14:30:00Z",
       "updated_at": "2023-05-16T10:20:00Z",
-      "published": true
+      "published": true,
+      "approved_comments": [
+        {
+          "id": 1,
+          "content": "Great post!",
+          "created_at": "2023-05-16T12:30:00Z"
+        }
+      ]
     }
     ```
 - **Error Response**:
@@ -73,7 +90,7 @@ Creates a new blog post.
 - **URL**: `/api/posts/`
 - **Method**: `POST`
 - **Headers**:
-  - `Content-Type`: `application/json`
+  - `Content-Type`: `application/json` or `multipart/form-data` (if uploading image)
   - `X-CSRFToken`: CSRF token (from cookie)
 - **Data Params**:
   ```json
@@ -93,9 +110,9 @@ Creates a new blog post.
 Updates an existing blog post.
 
 - **URL**: `/api/posts/:id/`
-- **Method**: `PATCH`
+- **Method**: `PATCH` or `PUT`
 - **Headers**:
-  - `Content-Type`: `application/json`
+  - `Content-Type`: `application/json` or `multipart/form-data` (if updating image)
   - `X-CSRFToken`: CSRF token (from cookie)
 - **Data Params**:
   ```json
@@ -127,12 +144,13 @@ Uploads additional images for a blog post.
 - **URL**: `/api/posts/:id/upload_images/`
 - **Method**: `POST`
 - **Headers**:
+  - `Content-Type`: `multipart/form-data`
   - `X-CSRFToken`: CSRF token (from cookie)
 - **Data Params**:
-  - Form data with an `image` field containing the image file
+  - Form data with `images[]` field containing one or more image files
 - **Success Response**:
   - **Code**: 201
-  - **Content**: The created image object
+  - **Content**: Array of created image objects
 
 ## Comments API
 
@@ -161,6 +179,41 @@ Retrieves a list of comments, optionally filtered by post ID and approval status
     ]
     ```
 
+### Get All Comments for a Post (Approved and Pending)
+
+Retrieves all comments for a post, separated into approved and pending.
+
+- **URL**: `/api/comments/all/`
+- **Method**: `GET`
+- **URL Parameters**:
+  - `post` (required): Post ID to get comments for
+- **Success Response**:
+  - **Code**: 200
+  - **Content**:
+    ```json
+    {
+      "approved": [
+        {
+          "id": 1,
+          "post": 1,
+          "content": "This is a great post!",
+          "created_at": "2023-05-20T15:30:00Z",
+          "approved": true
+        }
+      ],
+      "pending": [
+        {
+          "id": 2,
+          "post": 1,
+          "content": "This is a pending comment",
+          "created_at": "2023-05-21T10:15:00Z",
+          "approved": false
+        }
+      ],
+      "total": 2
+    }
+    ```
+
 ### Create a Comment
 
 Creates a new comment on a blog post.
@@ -174,8 +227,7 @@ Creates a new comment on a blog post.
   ```json
   {
     "post": 1,
-    "content": "This is my comment on the blog post.",
-    "approved": false
+    "content": "This is my comment on the blog post."
   }
   ```
 - **Success Response**:
@@ -187,18 +239,68 @@ Creates a new comment on a blog post.
 Approves a comment.
 
 - **URL**: `/api/comments/:id/approve/`
-- **Method**: `POST`
+- **Method**: `POST` or `PATCH`
 - **Headers**:
   - `X-CSRFToken`: CSRF token (from cookie)
 - **Success Response**:
   - **Code**: 200
   - **Content**: `{ "status": "comment approved" }`
 
+### Reject a Comment
+
+Rejects (deletes) a comment.
+
+- **URL**: `/api/comments/:id/reject/`
+- **Method**: `POST` or `PATCH`
+- **Headers**:
+  - `X-CSRFToken`: CSRF token (from cookie)
+- **Success Response**:
+  - **Code**: 200
+  - **Content**: `{ "status": "comment rejected and deleted" }`
+
+### Bulk Approve Comments
+
+Approves multiple comments at once.
+
+- **URL**: `/api/comments/bulk_approve/`
+- **Method**: `POST`
+- **Headers**:
+  - `Content-Type`: `application/json`
+  - `X-CSRFToken`: CSRF token (from cookie)
+- **Data Params**:
+  ```json
+  {
+    "comment_ids": [1, 2, 3]
+  }
+  ```
+- **Success Response**:
+  - **Code**: 200
+  - **Content**: `{ "status": "3 comments approved" }`
+
+### Bulk Reject Comments
+
+Rejects (deletes) multiple comments at once.
+
+- **URL**: `/api/comments/bulk_reject/`
+- **Method**: `POST`
+- **Headers**:
+  - `Content-Type`: `application/json`
+  - `X-CSRFToken`: CSRF token (from cookie)
+- **Data Params**:
+  ```json
+  {
+    "comment_ids": [1, 2, 3]
+  }
+  ```
+- **Success Response**:
+  - **Code**: 200
+  - **Content**: `{ "status": "3 comments rejected" }`
+
 ### Get Pending Comment Count
 
 Returns the count of unapproved comments.
 
-- **URL**: `/api/comments/pending-count/`
+- **URL**: `/api/comments/pending_count/`
 - **Method**: `GET`
 - **Success Response**:
   - **Code**: 200
@@ -234,6 +336,7 @@ Uploads a new image for a blog post.
 - **URL**: `/api/images/`
 - **Method**: `POST`
 - **Headers**:
+  - `Content-Type`: `multipart/form-data`
   - `X-CSRFToken`: CSRF token (from cookie)
 - **Data Params**:
   - Form data with:
@@ -243,6 +346,63 @@ Uploads a new image for a blog post.
   - **Code**: 201
   - **Content**: The created image object
 
+## CKEditor 5 Integration
+
+The blog uses CKEditor 5 for rich text editing with the following features:
+
+### CKEditor Uploads
+
+- **URL**: `/ckeditor5/upload/`
+- **Method**: `POST`
+- **Headers**:
+  - `Content-Type`: `multipart/form-data`
+  - `X-CSRFToken`: CSRF token (from cookie)
+- **Data Params**:
+  - Form data with an `upload` field containing the image file
+- **Success Response**:
+  - **Code**: 201
+  - **Content**: 
+    ```json
+    {
+      "url": "/media/uploads/filename.jpg",
+      "uploaded": 1
+    }
+    ```
+
+### CKEditor Configuration
+
+The CKEditor is configured with these features:
+- Rich text formatting (bold, italic, underline)
+- Headings (h1-h6)
+- Lists (bulleted, numbered)
+- Tables with properties
+- Image upload and alignment
+- Code blocks
+- Blockquotes
+- Custom color palettes
+
+## Debug Endpoints
+
+### Root Page
+
+A simple page with links to the main parts of the API.
+
+- **URL**: `/`
+- **Method**: `GET`
+- **Success Response**:
+  - **Code**: 200
+  - **Content**: HTML page with links to admin and API
+
+### Debug Info
+
+Returns diagnostic information about the application.
+
+- **URL**: `/debug-info/`
+- **Method**: `GET`
+- **Success Response**:
+  - **Code**: 200
+  - **Content**: JSON object with system and configuration info
+
 ## Media Files
 
 All uploaded media files are available at `/media/` path:
@@ -251,25 +411,6 @@ All uploaded media files are available at `/media/` path:
 - Blog post images: `/media/blog_images/`
 - CKEditor uploads: `/media/uploads/`
 
-## Error Handling
+## Static Files
 
-All API endpoints return standard HTTP error codes:
-
-- `400 Bad Request`: The request was malformed
-- `401 Unauthorized`: Authentication is required
-- `403 Forbidden`: The request was not allowed
-- `404 Not Found`: The requested resource was not found
-- `500 Internal Server Error`: An error occurred on the server
-
-## CORS
-
-The API is configured to accept requests from specified origins, including:
-
-- `http://localhost:3000`
-- `http://localhost:5173`
-- Your frontend deployment URL (when set in environment variables)
-
-## Additional Notes
-
-1. For any file uploads, ensure you're using `multipart/form-data` and not setting the `Content-Type` header manually.
-2. For CSRF protection, ensure that your frontend includes credentials in all requests that change data. 
+Static files (CSS, JavaScript, etc.) are served from `/static/` path. 

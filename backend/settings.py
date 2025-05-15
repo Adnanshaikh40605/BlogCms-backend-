@@ -145,28 +145,16 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Always use PostgreSQL (SQLite is no longer used)
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/blog_cms')
+# PostgreSQL database configuration
+DATABASE_URL = os.environ.get(
+    'DATABASE_URL', 
+    'postgresql://postgres:TLgjKUteroESAXyyKSkzZeFBRitnmOLq@ballast.proxy.rlwy.net:17918/railway'
+)
 
-# Check if URL is malformed (specifically look for double @ which indicates improper parsing of password)
-if '@' in DATABASE_URL.split('://')[1].split(':', 1)[1].split('@', 1)[0]:
-    # Fix the malformed URL by properly encoding the password
-    parts = DATABASE_URL.split('://')
-    if len(parts) == 2:
-        scheme = parts[0]
-        rest = parts[1]
-        if '@' in rest:
-            userpass, hostdbinfo = rest.split('@', 1)
-            if ':' in userpass:
-                user, password = userpass.split(':', 1)
-                # If password contains '@', encode it
-                if '@' in password:
-                    import urllib.parse
-                    password = urllib.parse.quote(password)
-                    DATABASE_URL = f"{scheme}://{user}:{password}@{hostdbinfo}"
-                    print(f"Fixed malformed DATABASE_URL (contained @ in password)")
+# Alternative internal connection string (for internal Railway network)
+INTERNAL_DB_URL = 'postgresql://postgres:TLgjKUteroESAXyyKSkzZeFBRitnmOLq@postgres.railway.internal:5432/railway'
 
-# Create a masked version of DATABASE_URL for logging
+# Function to mask password for logging
 def mask_password(url):
     if not url:
         return "No database URL provided"
@@ -176,33 +164,49 @@ def mask_password(url):
     except Exception:
         return "Invalid database URL format"
 
-print(f"Using DATABASE_URL: {mask_password(DATABASE_URL)}")
+# First try to use the DATABASE_URL environment variable with dj_database_url
+if DATABASE_URL:
+    try:
+        # Parse the DATABASE_URL with dj_database_url
+        DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=60)}
+        print(f"Using DATABASE_URL from environment: {mask_password(DATABASE_URL)}")
+    except Exception as e:
+        print(f"Error parsing DATABASE_URL: {str(e)}")
+        # Fall back to direct configuration
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': 'railway',
+                'USER': 'postgres',
+                'PASSWORD': 'TLgjKUteroESAXyyKSkzZeFBRitnmOLq',
+                'HOST': 'ballast.proxy.rlwy.net',
+                'PORT': '17918',
+                'CONN_MAX_AGE': 60,
+                'OPTIONS': {
+                    'connect_timeout': 5,
+                },
+            }
+        }
+        print("Falling back to direct database configuration.")
+else:
+    # If no DATABASE_URL, use direct configuration
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'railway',
+            'USER': 'postgres',
+            'PASSWORD': 'TLgjKUteroESAXyyKSkzZeFBRitnmOLq',
+            'HOST': 'ballast.proxy.rlwy.net',
+            'PORT': '17918',
+            'CONN_MAX_AGE': 60,
+            'OPTIONS': {
+                'connect_timeout': 5,
+            },
+        }
+    }
+    print("Using direct database configuration (no DATABASE_URL found).")
 
-# Try to parse the URL to verify its structure
-try:
-    url_parts = re.match(r'postgresql://([^:]+):([^@]+)@([^:/]+)(?::(\d+))?/(.+)', DATABASE_URL)
-    if url_parts:
-        db_user, db_password, db_host, db_port, db_name = url_parts.groups()
-        db_port = db_port or '5432'  # Default port if not specified
-        print(f"Database connection details parsed successfully:")
-        print(f"  Host: {db_host}")
-        print(f"  Port: {db_port}")
-        print(f"  Database: {db_name}")
-        print(f"  User: {db_user}")
-    else:
-        print(f"WARNING: Database URL does not match expected pattern: {mask_password(DATABASE_URL)}")
-except Exception as e:
-    print(f"ERROR parsing database URL: {str(e)}")
-
-# Additional DB config logging
-DATABASES = {
-    'default': dj_database_url.config(
-        default=DATABASE_URL,
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
-print(f"Using PostgreSQL database: {mask_password(DATABASE_URL)}")
+# Print database configuration for debugging
 print(f"Database engine: {DATABASES['default'].get('ENGINE', 'Not specified')}")
 print(f"Database name: {DATABASES['default'].get('NAME', 'Not specified')}")
 print(f"Database host: {DATABASES['default'].get('HOST', 'Not specified')}")
