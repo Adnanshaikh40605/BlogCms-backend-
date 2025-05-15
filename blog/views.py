@@ -1,11 +1,14 @@
 from django.shortcuts import render
 from rest_framework import viewsets, status, generics
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 from django.db.models import Prefetch
 import logging
+from django.http import JsonResponse
+from django.urls import get_resolver
+from django.urls.resolvers import URLPattern, URLResolver
 
 from .models import BlogPost, BlogImage, Comment
 from .serializers import (
@@ -414,3 +417,40 @@ class CommentViewSet(viewsets.ModelViewSet):
         # Return serialized data
         serializer = CommentSerializer(approved_comments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def list_urls(request):
+    """Debug view to list all URLs in the Django project."""
+    urlconf = __import__(get_resolver().urlconf_name, fromlist=[''])
+    
+    def list_urls_recursive(patterns, parent_path=""):
+        urls = []
+        for pattern in patterns:
+            if isinstance(pattern, URLPattern):
+                # Get the pattern string or regex pattern
+                pattern_str = str(pattern.pattern)
+                # Append to parent path
+                full_path = parent_path + pattern_str
+                # Get the name if available
+                name = pattern.name if hasattr(pattern, 'name') else ''
+                # Get the callback function
+                callback = pattern.callback.__name__ if hasattr(pattern.callback, '__name__') else str(pattern.callback)
+                urls.append({
+                    'path': full_path,
+                    'name': name,
+                    'callback': callback
+                })
+            elif isinstance(pattern, URLResolver):
+                # Get resolver pattern
+                resolver_path = str(pattern.pattern)
+                # Recursively get patterns from resolver
+                urls.extend(list_urls_recursive(pattern.url_patterns, parent_path + resolver_path))
+        return urls
+    
+    try:
+        all_urls = list_urls_recursive(urlconf.urlpatterns)
+        # Filter for comment URLs to make output manageable
+        comment_urls = [url for url in all_urls if 'comment' in url['path'].lower()]
+        return JsonResponse({'comment_urls': comment_urls})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

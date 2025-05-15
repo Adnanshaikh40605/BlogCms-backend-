@@ -25,4 +25,7 @@ urlpatterns = [
     # Bulk operations
     path('comments/bulk_approve/', views.CommentViewSet.as_view({'post': 'bulk_approve'}), name='comments-bulk-approve'),
     path('comments/bulk_reject/', views.CommentViewSet.as_view({'post': 'bulk_reject'}), name='comments-bulk-reject'),
+    
+    # Debug URL for troubleshooting
+    path('debug/urls/', views.list_urls, name='debug-list-urls'),
 ] 
