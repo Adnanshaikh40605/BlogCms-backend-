@@ -1,60 +1,58 @@
 #!/bin/bash
 
-# Remove the set -e to prevent early termination
-# set -e
+# Set error handling
+set -e
 
-# Print Python version and environment info
-echo "Python version:"
-python --version
-echo "Pip version:"
-pip --version
-echo "Environment variables:"
-env | grep -v "PASSWORD\|SECRET\|KEY"
-echo "Current directory:"
-pwd
-echo "Directory contents:"
-ls -la
+# Print environment information (for debugging)
+echo "👉 Environment: $RAILWAY_ENVIRONMENT"
+echo "👉 Project: $RAILWAY_PROJECT_NAME"
+echo "👉 Service: $RAILWAY_SERVICE_NAME"
 
-# Create static directory
-mkdir -p static
+# Make sure Python outputs everything immediately
+export PYTHONUNBUFFERED=1
 
-# Run migrations
-echo "Running migrations..."
-python manage.py migrate --verbosity 2 || echo "Migration failed, continuing anyway"
+# Load environment variables
+if [ -f .env ]; then
+    echo "🔄 Loading environment variables from .env file"
+    export $(cat .env | grep -v '^#' | xargs)
+fi
+
+# Run database migrations
+echo "🏁 Running database migrations..."
+python manage.py makemigrations
+python manage.py migrate --noinput
 
 # Collect static files
-echo "Collecting static files..."
-python manage.py collectstatic --noinput || echo "Collectstatic failed, continuing anyway"
+echo "📦 Collecting static files..."
+python manage.py collectstatic --noinput
 
-# Check for errors
-echo "Checking for deployment issues..."
-python manage.py check --deploy || echo "Deployment check has issues, continuing anyway"
-
-# Create a superuser if needed (will be skipped if the user already exists)
-echo "Creating superuser if needed..."
-python -c "
+# Create superuser if environment variables are provided
+if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
+    echo "👤 Creating/updating superuser..."
+    python -c "
 import os
 import django
-
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 django.setup()
+from django.contrib.auth import get_user_model
+User = get_user_model()
+username = os.environ.get('DJANGO_SUPERUSER_USERNAME')
+email = os.environ.get('DJANGO_SUPERUSER_EMAIL')
+password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
+if not User.objects.filter(username=username).exists():
+    User.objects.create_superuser(username=username, email=email, password=password)
+    print('Superuser created successfully!')
+else:
+    user = User.objects.get(username=username)
+    user.set_password(password)
+    user.email = email
+    user.is_superuser = True
+    user.is_staff = True
+    user.save()
+    print('Superuser updated successfully!')
+"
+fi
 
-from django.contrib.auth.models import User
-from django.db.utils import IntegrityError
-
-try:
-    if not User.objects.filter(username='admin').exists():
-        User.objects.create_superuser('admin', 'admin@example.com', 'admin123')
-        print('Superuser created.')
-    else:
-        print('Superuser already exists.')
-except Exception as e:
-    print(f'Error creating superuser: {e}')
-" || echo "Superuser creation failed, continuing anyway"
-
-# Determine port - use PORT env var or default to 8000
-PORT="${PORT:-8000}"
-echo "Starting server on port $PORT..."
-
-# Start server
-gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --log-level debug 
+# Start Gunicorn server
+echo "🚀 Starting Gunicorn server..."
+gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT 
