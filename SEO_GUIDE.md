@@ -236,4 +236,105 @@ Use this checklist before publishing a new blog post:
 
 ---
 
-This guide should be reviewed and updated periodically to keep up with SEO best practices and search engine algorithm changes. 
+This guide should be reviewed and updated periodically to keep up with SEO best practices and search engine algorithm changes.
+
+## OpenGraph & Twitter Meta Tags
+
+The Blog CMS now includes dynamic OpenGraph and Twitter meta tags for better social sharing. When users share your blog posts on social media platforms like Facebook, Twitter, LinkedIn, and others, they will display with proper titles, descriptions, and featured images.
+
+### Components
+
+1. **SEO Component (`frontend/src/components/SEO.jsx`)**
+   - Reusable component for managing document head tags
+   - Handles OpenGraph and Twitter meta tags
+   - Dynamically generates meta content based on page data
+
+2. **SocialShare Component (`frontend/src/components/SocialShare.jsx`)**
+   - Provides social sharing buttons for blog posts
+   - Supports Twitter, Facebook, LinkedIn, WhatsApp, and Email sharing
+   - Encodes URLs and content for proper sharing
+
+### Implementation
+
+The SEO features are implemented on:
+- Blog post detail pages
+- Blog listing pages
+- Category pages
+
+### Default Images
+
+A default social image is provided at `frontend/public/default-social-image.svg` and `frontend/public/default-social-image.png`. For production, you should:
+
+1. Replace these with your own branded images
+2. Use dimensions of 1200x630 pixels for optimal display on social platforms
+3. Keep file sizes small for faster loading
+
+### Configuration
+
+To customize the SEO settings:
+
+1. **Twitter Username**
+   - Update the `twitterUsername` prop in the SEO component calls
+   - Default is '@yourtwitterhandle'
+
+2. **Site Name**
+   - Update the `siteName` variable in the SEO component
+   - Default is 'Blog CMS'
+
+3. **Default Description**
+   - Update the `defaultDescription` variable in the SEO component
+   - Used when no specific description is provided
+
+## Best Practices
+
+1. **Titles**
+   - Keep titles under 60 characters
+   - Put important keywords at the beginning
+   - Make them compelling and descriptive
+
+2. **Descriptions**
+   - Keep descriptions between 120-160 characters
+   - Include relevant keywords naturally
+   - Write for humans, not just search engines
+
+3. **Images**
+   - Use high-quality, relevant images
+   - Optimize images for web (compress without losing quality)
+   - Maintain the 1200x630 aspect ratio for social sharing
+
+4. **URLs**
+   - Use clean, descriptive URLs
+   - Include relevant keywords when appropriate
+   - Avoid special characters and excessive parameters
+
+## Testing Social Sharing
+
+To test how your pages appear when shared on social media:
+
+1. **Facebook Sharing Debugger**
+   - https://developers.facebook.com/tools/debug/
+
+2. **Twitter Card Validator**
+   - https://cards-dev.twitter.com/validator
+
+3. **LinkedIn Post Inspector**
+   - https://www.linkedin.com/post-inspector/
+
+## Additional SEO Recommendations
+
+1. **Sitemap**
+   - Implement a dynamic sitemap.xml
+   - Submit to Google Search Console and Bing Webmaster Tools
+
+2. **Structured Data**
+   - Add JSON-LD structured data for blog posts
+   - Include author, date published, and category information
+
+3. **Performance Optimization**
+   - Improve Core Web Vitals scores
+   - Optimize images and reduce JavaScript bundle size
+   - Implement proper caching strategies
+
+4. **Mobile Optimization**
+   - Ensure all pages are mobile-friendly
+   - Test on various devices and screen sizes 
