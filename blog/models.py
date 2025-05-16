@@ -28,6 +28,7 @@ class Comment(models.Model):
     content = models.TextField()
     approved = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    admin_reply = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return f"Comment on {self.post.title}"

@@ -9,7 +9,7 @@ class BlogImageSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
-        fields = ['id', 'post', 'content', 'approved', 'created_at']
+        fields = ['id', 'post', 'content', 'approved', 'created_at', 'admin_reply']
         read_only_fields = ['id', 'approved', 'created_at']
 
 class BlogPostListSerializer(serializers.ModelSerializer):

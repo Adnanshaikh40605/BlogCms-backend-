@@ -418,6 +418,31 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer = CommentSerializer(approved_comments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['post', 'patch'])
+    def reply(self, request, pk=None):
+        """Add an admin reply to a comment"""
+        comment = self.get_object()
+        reply_text = request.data.get('admin_reply')
+        
+        if not reply_text:
+            return Response(
+                {'error': 'Reply content is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        comment.admin_reply = reply_text
+        comment.save()
+        
+        # Log for debugging
+        logger.info(f"Added admin reply to comment {comment.id} for post {comment.post.id}")
+        
+        # Return the updated comment data
+        serializer = CommentSerializer(comment)
+        return Response({
+            'status': 'reply added',
+            'comment': serializer.data
+        }, status=status.HTTP_200_OK)
+
 @api_view(['GET'])
 def list_urls(request):
     """Debug view to list all URLs in the Django project."""
