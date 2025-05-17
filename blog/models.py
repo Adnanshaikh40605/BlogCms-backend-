@@ -13,6 +13,7 @@ class BlogPost(models.Model):
     title = models.CharField(max_length=200)
     content = CKEditor5Field('Content', config_name='extends')
     featured_image = models.ImageField(upload_to='featured_images/', blank=True, null=True)
+    slug = models.SlugField(max_length=250, unique=True, blank=True)
     published = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -128,16 +129,24 @@ class BlogImage(models.Model):
 
 class Comment(models.Model):
     post = models.ForeignKey(BlogPost, on_delete=models.CASCADE, related_name='comments', db_index=True)
+    author_name = models.CharField(max_length=100, blank=True, null=True)
+    author_email = models.EmailField(blank=True, null=True)
+    author_website = models.URLField(blank=True, null=True)
     content = models.TextField()
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    user_agent = models.TextField(blank=True, null=True)
     approved = models.BooleanField(default=False, db_index=True)
+    is_trash = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
     admin_reply = models.TextField(null=True, blank=True)
 
     def __str__(self):
-        return f"Comment on {self.post.title}"
+        return f"Comment by {self.author_name} on {self.post.title}"
 
     class Meta:
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['post', 'approved']),
+            models.Index(fields=['is_trash']),
         ] 

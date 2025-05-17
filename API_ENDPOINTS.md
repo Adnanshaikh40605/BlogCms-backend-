@@ -346,30 +346,7 @@ Uploads a new image for a blog post.
   - **Code**: 201
   - **Content**: The created image object
 
-## CKEditor 5 Integration
-
-The blog uses CKEditor 5 for rich text editing with the following features:
-
-### CKEditor Uploads
-
-- **URL**: `/ckeditor5/upload/`
-- **Method**: `POST`
-- **Headers**:
-  - `Content-Type`: `multipart/form-data`
-  - `X-CSRFToken`: CSRF token (from cookie)
-- **Data Params**:
-  - Form data with an `upload` field containing the image file
-- **Success Response**:
-  - **Code**: 201
-  - **Content**: 
-    ```json
-    {
-      "url": "/media/uploads/filename.jpg",
-      "uploaded": 1
-    }
-    ```
-
-### CKEditor Configuration
+## CKEditor Configuration
 
 The CKEditor is configured with these features:
 - Rich text formatting (bold, italic, underline)
@@ -380,28 +357,6 @@ The CKEditor is configured with these features:
 - Code blocks
 - Blockquotes
 - Custom color palettes
-
-## Debug Endpoints
-
-### Root Page
-
-A simple page with links to the main parts of the API.
-
-- **URL**: `/`
-- **Method**: `GET`
-- **Success Response**:
-  - **Code**: 200
-  - **Content**: HTML page with links to admin and API
-
-### Debug Info
-
-Returns diagnostic information about the application.
-
-- **URL**: `/debug-info/`
-- **Method**: `GET`
-- **Success Response**:
-  - **Code**: 200
-  - **Content**: JSON object with system and configuration info
 
 ## Media Files
 

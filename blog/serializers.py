@@ -7,10 +7,32 @@ class BlogImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'image', 'created_at']
 
 class CommentSerializer(serializers.ModelSerializer):
+    post_title = serializers.SerializerMethodField()
+    
     class Meta:
         model = Comment
-        fields = ['id', 'post', 'content', 'approved', 'created_at', 'admin_reply']
-        read_only_fields = ['id', 'approved', 'created_at']
+        fields = [
+            'id', 'post', 'post_title', 'author_name', 'author_email', 'author_website',
+            'content', 'approved', 'is_trash', 'created_at', 'updated_at', 'admin_reply',
+            'ip_address', 'user_agent'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'ip_address', 'user_agent']
+        
+    def get_post_title(self, obj):
+        if obj.post:
+            return obj.post.title
+        return None
+        
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # Include post information for frontend display
+        if instance.post:
+            representation['post'] = {
+                'id': instance.post.id,
+                'title': instance.post.title,
+                'slug': instance.post.slug if hasattr(instance.post, 'slug') else None
+            }
+        return representation
 
 class BlogPostListSerializer(serializers.ModelSerializer):
     featured_image = serializers.ImageField(max_length=None, use_url=True, required=False)

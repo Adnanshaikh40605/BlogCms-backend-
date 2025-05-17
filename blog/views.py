@@ -286,10 +286,25 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post', 'patch'])
     def reject(self, request, pk=None):
-        """Reject a comment by deleting it"""
+        """Reject (unapprove) a comment"""
         comment = self.get_object()
-        comment.delete()
-        return Response({'status': 'comment rejected and deleted'}, status=status.HTTP_200_OK)
+        logger.info(f"Rejecting comment {comment.id} for post {comment.post.id if comment.post else 'unknown'}")
+        logger.info(f"Comment status before: approved={comment.approved}")
+        
+        # Set approved to False instead of deleting
+        comment.approved = False
+        comment.save()
+        
+        # Verify the change was saved
+        comment.refresh_from_db()
+        logger.info(f"Comment status after: approved={comment.approved}")
+        
+        # Return the updated comment data
+        serializer = CommentSerializer(comment)
+        return Response({
+            'status': 'comment rejected',
+            'comment': serializer.data
+        }, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'])
     def bulk_approve(self, request):
@@ -301,15 +316,23 @@ class CommentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
             
+        # Log for debugging
+        logger.info(f"Bulk approving comments: {comment_ids}")
+        
+        # Filter comments that aren't already approved
         comments = Comment.objects.filter(id__in=comment_ids, approved=False)
         count = comments.count()
-        comments.update(approved=True)
+        
+        # Update the comments
+        comments.update(approved=True, is_trash=False)
+        
+        logger.info(f"Bulk approved {count} comments")
         
         return Response({'status': f'{count} comments approved'}, status=status.HTTP_200_OK)
         
     @action(detail=False, methods=['post'])
     def bulk_reject(self, request):
-        """Reject (delete) multiple comments at once"""
+        """Reject (unapprove) multiple comments at once"""
         comment_ids = request.data.get('comment_ids', [])
         if not comment_ids:
             return Response(
@@ -317,9 +340,17 @@ class CommentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        comments = Comment.objects.filter(id__in=comment_ids)
+        # Log for debugging
+        logger.info(f"Bulk rejecting comments: {comment_ids}")
+        
+        # Filter comments that are currently approved
+        comments = Comment.objects.filter(id__in=comment_ids, approved=True)
         count = comments.count()
-        comments.delete()
+        
+        # Update comments to be unapproved (not deleted)
+        comments.update(approved=False)
+        
+        logger.info(f"Bulk rejected {count} comments")
         
         return Response({'status': f'{count} comments rejected'}, status=status.HTTP_200_OK)
 
@@ -494,3 +525,97 @@ def list_urls(request):
         return JsonResponse({'comment_urls': comment_urls})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['POST'])
+def comment_action(request, action):
+    """Handle comment actions from admin interface"""
+    try:
+        comment_id = request.data.get('comment_id')
+        if not comment_id:
+            return JsonResponse({'error': 'Comment ID is required'}, status=400)
+        
+        # Log the request data for debugging
+        logger.info(f"Comment action request: action={action}, comment_id={comment_id}, data={request.data}")
+        
+        comment = get_object_or_404(Comment, id=comment_id)
+        
+        if action == 'approve':
+            comment.approved = True
+            comment.is_trash = False
+            comment.save()
+            return JsonResponse({'status': 'success', 'message': 'Comment approved'})
+            
+        elif action == 'unapprove':
+            comment.approved = False
+            comment.save()
+            return JsonResponse({'status': 'success', 'message': 'Comment unapproved'})
+            
+        elif action == 'trash':
+            comment.is_trash = True
+            comment.save()
+            return JsonResponse({'status': 'success', 'message': 'Comment moved to trash'})
+            
+        elif action == 'restore':
+            comment.is_trash = False
+            comment.save()
+            return JsonResponse({'status': 'success', 'message': 'Comment restored from trash'})
+            
+        elif action == 'delete':
+            comment.delete()
+            return JsonResponse({'status': 'success', 'message': 'Comment permanently deleted'})
+            
+        else:
+            return JsonResponse({'error': f'Unknown action: {action}'}, status=400)
+    
+    except Exception as e:
+        logger.error(f"Error performing comment action: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+def comment_counts(request):
+    """Get counts for comments in different states (all, pending, approved, trash)"""
+    try:
+        # Log the request for debugging
+        logger.info(f"Received request to comment_counts endpoint: {request.path}")
+        
+        # Force evaluate the counts to ensure they're accurate
+        all_count = Comment.objects.filter(is_trash=False).count()
+        pending_count = Comment.objects.filter(approved=False, is_trash=False).count()
+        approved_count = Comment.objects.filter(approved=True, is_trash=False).count()
+        trash_count = Comment.objects.filter(is_trash=True).count()
+        
+        # Log counts for debugging
+        logger.info(f"Comment counts: all={all_count}, pending={pending_count}, approved={approved_count}, trash={trash_count}")
+        
+        # Verify the counts match expectations
+        total_count = Comment.objects.count()
+        expected_sum = all_count + trash_count
+        if total_count != expected_sum:
+            logger.warning(f"Total comment count ({total_count}) doesn't match sum of all + trash ({expected_sum})")
+        
+        response_data = {
+            'all': all_count,
+            'pending': pending_count,
+            'approved': approved_count,
+            'trash': trash_count,
+            'status': 'success',
+            'message': 'Comment counts retrieved successfully',
+            'path': request.path
+        }
+        
+        # Return the response
+        logger.info(f"Returning comment counts: {response_data}")
+        return JsonResponse(response_data)
+    except Exception as e:
+        logger.error(f"Error getting comment counts: {str(e)}", exc_info=True)
+        return JsonResponse({'error': str(e), 'detail': 'An error occurred while fetching comment counts'}, status=500)
+
+@api_view(['GET'])
+def test_api(request):
+    """Simple test endpoint to verify API routing"""
+    return JsonResponse({
+        'status': 'success',
+        'message': 'API test endpoint successful',
+        'path': request.path,
+        'method': request.method
+    })

@@ -1,0 +1,43 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls admin_list %}
+
+{% block content %}
+  <div class="module" id="changelist">
+    <div class="comment-tabs" style="margin: 10px 0 20px 0; border-bottom: 1px solid #ccc;">
+      <ul style="list-style: none; display: flex; margin: 0; padding: 0;">
+        <li style="margin-right: 10px; padding: 5px 10px; {% if not request.GET.is_trash %}font-weight: bold; border-bottom: 2px solid #447e9b;{% endif %}">
+          <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}" style="text-decoration: none; color: #447e9b;">All</a>
+        </li>
+        <li style="margin-right: 10px; padding: 5px 10px; {% if request.GET.approved == '1' %}font-weight: bold; border-bottom: 2px solid #447e9b;{% endif %}">
+          <a href="?approved=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" style="text-decoration: none; color: #447e9b;">Approved</a>
+        </li>
+        <li style="margin-right: 10px; padding: 5px 10px; {% if request.GET.approved == '0' and not request.GET.is_trash %}font-weight: bold; border-bottom: 2px solid #447e9b;{% endif %}">
+          <a href="?approved=0{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" style="text-decoration: none; color: #447e9b;">Pending</a>
+        </li>
+        <li style="margin-right: 10px; padding: 5px 10px; {% if request.GET.is_trash %}font-weight: bold; border-bottom: 2px solid #447e9b;{% endif %}">
+          <a href="?is_trash=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" style="text-decoration: none; color: #447e9b;">Trash</a>
+        </li>
+      </ul>
+    </div>
+
+    {{ block.super }}
+
+  </div>
+{% endblock %}
+
+{% block result_list %}
+  <div style="margin-bottom: 10px; font-style: italic;">
+    {% with cl.result_count as count %}
+      {% if count %}
+        {{ count }} comment{{ count|pluralize }}
+      {% endif %}
+    {% endwith %}
+  </div>
+  {{ block.super }}
+{% endblock %}
+
+{% block object_tools %}
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    {{ block.super }}
+  </div>
+{% endblock %} 
