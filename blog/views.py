@@ -418,10 +418,25 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer = CommentSerializer(approved_comments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['post', 'patch'])
+    @action(detail=True, methods=['post', 'patch', 'put', 'delete'])
     def reply(self, request, pk=None):
-        """Add an admin reply to a comment"""
+        """Add, update or delete an admin reply to a comment"""
         comment = self.get_object()
+        
+        # Handle DELETE request - remove admin reply
+        if request.method == 'DELETE':
+            comment.admin_reply = None
+            comment.save()
+            
+            # Log for debugging
+            logger.info(f"Deleted admin reply from comment {comment.id} for post {comment.post.id}")
+            
+            return Response({
+                'status': 'reply deleted',
+                'comment': CommentSerializer(comment).data
+            }, status=status.HTTP_200_OK)
+        
+        # Handle POST, PATCH, PUT requests - add or update admin reply
         reply_text = request.data.get('admin_reply')
         
         if not reply_text:
@@ -434,12 +449,12 @@ class CommentViewSet(viewsets.ModelViewSet):
         comment.save()
         
         # Log for debugging
-        logger.info(f"Added admin reply to comment {comment.id} for post {comment.post.id}")
+        logger.info(f"Added/updated admin reply to comment {comment.id} for post {comment.post.id}")
         
         # Return the updated comment data
         serializer = CommentSerializer(comment)
         return Response({
-            'status': 'reply added',
+            'status': 'reply added' if request.method == 'POST' else 'reply updated',
             'comment': serializer.data
         }, status=status.HTTP_200_OK)
 
